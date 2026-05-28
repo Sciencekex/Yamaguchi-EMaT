@@ -3,9 +3,12 @@ import { ref, onMounted, onUnmounted, computed, nextTick, watch } from "vue";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
-
 const IMG_BASE = import.meta.env.PROD ? "/Yamaguchi-EMaT" : "";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+pdfjsLib.GlobalWorkerOptions.cMapUrl = IMG_BASE + "/cmaps/";
+pdfjsLib.GlobalWorkerOptions.cMapPacked = true;
+
 const DATA_URL = IMG_BASE + "/data/question_map.json";
 const PDF_BASE = IMG_BASE + "/QuestionData";
 
