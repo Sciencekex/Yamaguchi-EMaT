@@ -6,9 +6,9 @@ import pdfjsWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 const IMG_BASE = import.meta.env.PROD ? "/Yamaguchi-EMaT" : "";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
-pdfjsLib.GlobalWorkerOptions.cMapUrl = IMG_BASE + "/cmaps/";
+pdfjsLib.GlobalWorkerOptions.cMapUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/cmaps/";
 pdfjsLib.GlobalWorkerOptions.cMapPacked = true;
-pdfjsLib.GlobalWorkerOptions.standardFontDataUrl = IMG_BASE + "/standard_fonts/";
+pdfjsLib.GlobalWorkerOptions.standardFontDataUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/standard_fonts/";
 
 const DATA_URL = IMG_BASE + "/data/question_map.json";
 const PDF_BASE = IMG_BASE + "/QuestionData";
