@@ -8,7 +8,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from data_loader import (
     get_question_index,
     refresh_index,
-    get_random_question,
+    get_random_question_item,
+    load_question_map,
+    load_classification,
     render_page_as_image,
     load_checklist,
     toggle_checklist,
@@ -28,37 +30,55 @@ def index():
 def api_index():
     questions = get_question_index()
     checklist = load_checklist()
+    qmap = load_question_map()
+    classification = load_classification()
+
     total_pages = sum(q["problem_pages"] for q in questions)
     completed = len(checklist)
+    total_questions = len(qmap)
+
+    section_counts = {}
+    for q in qmap:
+        s = q.get("section", "")
+        if s:
+            section_counts[s] = section_counts.get(s, 0) + 1
+
     return jsonify({
-        "questions": questions,
         "total_pages": total_pages,
+        "total_questions": total_questions,
         "completed": completed,
         "checklist": checklist,
+        "section_counts": section_counts,
     })
 
 
 @app.route("/api/refresh")
 def api_refresh():
-    questions = refresh_index()
-    return jsonify({"status": "ok", "questions": questions})
+    refresh_index()
+    return jsonify({"status": "ok"})
 
 
 @app.route("/api/random")
 def api_random():
     completed = set(load_checklist().keys())
-    q = get_random_question(completed)
-    if q is None:
+    section_filter = request.args.get("section")
+    exclude_sections = request.args.get("exclude_sections", "").split(",") if request.args.get("exclude_sections") else None
+    exclude_years = request.args.get("exclude_years", "").split(",") if request.args.get("exclude_years") else None
+    item = get_random_question_item(completed, section_filter, exclude_sections, exclude_years)
+    if item is None:
         return jsonify({"error": "not found"}), 404
-    qid = f"{q['year']}_{q['page']}"
-    checklist = load_checklist()
-    done = qid in checklist
+
+    qid = item["id"]
+    done = qid in load_checklist()
+
     return jsonify({
-        "year": q["year"],
-        "page": q["page"],
-        "problem_file": q["problem_file"],
-        "answer_files": q["answer_files"],
-        "qid": qid,
+        "id": item["id"],
+        "year": item["year"],
+        "section": item.get("section"),
+        "qnum": item.get("qnum", 0),
+        "pages": item["pages"],
+        "page_start": item["page_start"],
+        "page_end": item["page_end"],
         "done": done,
     })
 
@@ -74,12 +94,11 @@ def api_pdf_page(year, ftype, page):
 @app.route("/api/checklist")
 def api_checklist():
     cl = load_checklist()
-    questions = get_question_index()
-    total_pages = sum(q["problem_pages"] for q in questions)
+    qmap = load_question_map()
     return jsonify({
         "checklist": cl,
         "completed": len(cl),
-        "total": total_pages,
+        "total": len(qmap),
     })
 
 

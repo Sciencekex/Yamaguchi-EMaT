@@ -7,24 +7,22 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 QUESTION_DATA_DIR = os.path.join(BASE_DIR, "..", "QuestionData")
 CHECKLIST_FILE = os.path.join(BASE_DIR, "checklist.json")
 INDEX_CACHE_FILE = os.path.join(BASE_DIR, "index_cache.json")
+CLASSIFICATION_FILE = os.path.join(BASE_DIR, "classification.json")
+QUESTION_MAP_FILE = os.path.join(BASE_DIR, "question_map.json")
 
 
 def scan_pdfs():
     questions = []
-
     for year_dir in sorted(os.listdir(QUESTION_DATA_DIR)):
         year_path = os.path.join(QUESTION_DATA_DIR, year_dir)
         if not os.path.isdir(year_path):
             continue
-
         try:
             year = int(year_dir)
         except ValueError:
             continue
-
         problem_file = None
         answer_files = []
-
         for fname in sorted(os.listdir(year_path)):
             if not fname.endswith(".pdf"):
                 continue
@@ -32,10 +30,8 @@ def scan_pdfs():
                 problem_file = fname
             elif fname.startswith("kaito"):
                 answer_files.append(fname)
-
         if problem_file is None:
             continue
-
         problem_path = os.path.join(year_path, problem_file)
         try:
             doc = fitz.open(problem_path)
@@ -43,27 +39,21 @@ def scan_pdfs():
             doc.close()
         except Exception:
             continue
-
         answer_pages_info = []
         for af in answer_files:
             apath = os.path.join(year_path, af)
             try:
                 doc = fitz.open(apath)
-                answer_pages_info.append({
-                    "file": af,
-                    "pages": doc.page_count
-                })
+                answer_pages_info.append({"file": af, "pages": doc.page_count})
                 doc.close()
             except Exception:
                 continue
-
         questions.append({
             "year": year,
             "problem_file": problem_file,
             "problem_pages": problem_pages,
-            "answer_files": answer_pages_info
+            "answer_files": answer_pages_info,
         })
-
     return questions
 
 
@@ -74,7 +64,6 @@ def get_question_index():
                 return json.load(f)
         except Exception:
             pass
-
     questions = scan_pdfs()
     with open(INDEX_CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(questions, f, ensure_ascii=False, indent=2)
@@ -88,33 +77,85 @@ def refresh_index():
     return questions
 
 
-def get_random_question(completed_set=None):
-    questions = get_question_index()
-    if not questions:
+def load_classification():
+    if os.path.exists(CLASSIFICATION_FILE):
+        try:
+            with open(CLASSIFICATION_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def load_question_map():
+    if os.path.exists(QUESTION_MAP_FILE):
+        try:
+            with open(QUESTION_MAP_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+
+def get_section(year, page):
+    cl = load_classification()
+    yr = str(year)
+    if yr in cl:
+        pm = cl[yr].get("page_map", {})
+        key = str(page)
+        return pm.get(key, None)
+    return None
+
+
+def get_random_question_item(completed_set=None, section_filter=None, exclude_sections=None, exclude_years=None):
+    qmap = load_question_map()
+    if not qmap:
         return None
 
-    question_pool = []
-    for q in questions:
-        for page in range(q["problem_pages"]):
-            qid = f"{q['year']}_{page}"
-            if completed_set and qid in completed_set:
+    exclude_sec_set = set(exclude_sections or [])
+    exclude_yr_set = set(int(y) for y in (exclude_years or []))
+
+    pool = []
+    for q in qmap:
+        qid = q["id"]
+        if completed_set and qid in completed_set:
+            continue
+        if section_filter and q.get("section") != section_filter:
+            continue
+        if q.get("section") in exclude_sec_set:
+            continue
+        if q["year"] in exclude_yr_set:
+            continue
+        pool.append(q)
+
+    if not pool:
+        for q in qmap:
+            if section_filter and q.get("section") != section_filter:
                 continue
-            question_pool.append((q["year"], page, q["problem_file"], q["answer_files"]))
+            if q.get("section") in exclude_sec_set:
+                continue
+            if q["year"] in exclude_yr_set:
+                continue
+            pool.append(q)
 
-    if not question_pool:
-        for q in questions:
-            for page in range(q["problem_pages"]):
-                question_pool.append((q["year"], page, q["problem_file"], q["answer_files"]))
+    if not pool:
+        for q in qmap:
+            if q.get("section") in exclude_sec_set:
+                continue
+            if q["year"] in exclude_yr_set:
+                continue
+            pool.append(q)
 
-    year, page, pf, af = random.choice(question_pool)
-    return {"year": year, "page": page, "problem_file": pf, "answer_files": af}
+    if not pool:
+        return None
+
+    return random.choice(pool)
 
 
 def render_page_as_image(year, file_type, page_num, zoom=2.0):
     year_dir = os.path.join(QUESTION_DATA_DIR, str(year))
     if not os.path.isdir(year_dir):
         return None
-
     target_file = None
     if file_type == "problem":
         for f in os.listdir(year_dir):
@@ -134,10 +175,8 @@ def render_page_as_image(year, file_type, page_num, zoom=2.0):
                 target_file = kaito_files[0]
     else:
         return None
-
     if target_file is None:
         return None
-
     pdf_path = os.path.join(year_dir, target_file)
     try:
         doc = fitz.open(pdf_path)
