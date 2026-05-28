@@ -13,11 +13,15 @@ function serveQuestionData() {
     name: 'serve-question-data',
     configureServer(server) {
       server.middlewares.use('/QuestionData', (req, res) => {
-        const filePath = path.join(questionDataDir, req.url)
+        const filePath = path.join(questionDataDir, req.url.split('?')[0])
         if (fs.existsSync(filePath)) {
           const ext = path.extname(filePath)
           const mime = { '.pdf': 'application/pdf', '.png': 'image/png', '.json': 'application/json' }
           res.setHeader('Content-Type', mime[ext] || 'application/octet-stream')
+          res.setHeader('Access-Control-Allow-Origin', '*')
+          res.setHeader('Accept-Ranges', 'bytes')
+          const stat = fs.statSync(filePath)
+          res.setHeader('Content-Length', stat.size)
           fs.createReadStream(filePath).pipe(res)
         } else {
           res.statusCode = 404
@@ -47,5 +51,8 @@ export default defineConfig(({ mode }) => ({
   },
   optimizeDeps: {
     include: ['pdfjs-dist'],
+    esbuildOptions: {
+      target: 'es2022',
+    },
   },
 }))

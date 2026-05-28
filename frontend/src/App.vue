@@ -90,15 +90,19 @@ async function renderPdfPage(year, type, pageNum) {
       : (type === "answer" ? `kaito${year}-01.pdf` : `kaito${year}-02.pdf`);
     const url = `${PDF_BASE}/${year}/${fileName}`;
     try {
-      const loadingTask = pdfjsLib.getDocument(url);
-      pdfCache[key] = await loadingTask.promise;
+      const resp = await fetch(url);
+      if (!resp.ok) return "";
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const loadingTask = pdfjsLib.getDocument({ url: blobUrl, disableRange: true, disableStream: true });
+      pdfCache[key] = { pdf: await loadingTask.promise, blobUrl };
     } catch (e) {
       console.error("PDF load error:", url, e);
       return "";
     }
   }
   try {
-    const pdf = pdfCache[key];
+    const pdf = pdfCache[key].pdf;
     if (pageNum < 0 || pageNum >= pdf.numPages) {
       if (type === "problem") return "";
       const fileName2 = `kaito${year}-02.pdf`;
@@ -106,11 +110,16 @@ async function renderPdfPage(year, type, pageNum) {
       const key2 = `${year}_answer2`;
       if (!pdfCache[key2]) {
         try {
-          const lt = pdfjsLib.getDocument(url2);
-          pdfCache[key2] = await lt.promise;
+          const resp2 = await fetch(url2);
+          if (resp2.ok) {
+            const blob2 = await resp2.blob();
+            const blobUrl2 = URL.createObjectURL(blob2);
+            const lt = pdfjsLib.getDocument({ url: blobUrl2, disableRange: true, disableStream: true });
+            pdfCache[key2] = { pdf: await lt.promise, blobUrl: blobUrl2 };
+          } else return "";
         } catch { return ""; }
       }
-      const pdf2 = pdfCache[key2];
+      const pdf2 = pdfCache[key2].pdf;
       const actualPage = pageNum - pdf.numPages;
       if (actualPage < 0 || actualPage >= pdf2.numPages) return "";
       const page = await pdf2.getPage(actualPage + 1);
