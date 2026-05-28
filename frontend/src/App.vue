@@ -1,11 +1,9 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from "vue";
 import * as pdfjsLib from "pdfjs-dist";
+import pdfjsWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
 const IMG_BASE = import.meta.env.PROD ? "/Yamaguchi-EMaT" : "";
 const DATA_URL = IMG_BASE + "/data/question_map.json";
