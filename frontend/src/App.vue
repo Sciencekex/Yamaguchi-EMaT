@@ -8,6 +8,7 @@ const IMG_BASE = import.meta.env.PROD ? "/Yamaguchi-EMaT" : "";
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 pdfjsLib.GlobalWorkerOptions.cMapUrl = IMG_BASE + "/cmaps/";
 pdfjsLib.GlobalWorkerOptions.cMapPacked = true;
+pdfjsLib.GlobalWorkerOptions.standardFontDataUrl = IMG_BASE + "/standard_fonts/";
 
 const DATA_URL = IMG_BASE + "/data/question_map.json";
 const PDF_BASE = IMG_BASE + "/QuestionData";
@@ -97,7 +98,7 @@ async function renderPdfPage(year, type, pageNum) {
       if (!resp.ok) return "";
       const blob = await resp.blob();
       const blobUrl = URL.createObjectURL(blob);
-      const loadingTask = pdfjsLib.getDocument({ url: blobUrl, disableRange: true, disableStream: true });
+      const loadingTask = pdfjsLib.getDocument({ url: blobUrl, disableRange: true, disableStream: true, useWorkerFetch: false, useSystemFonts: true });
       pdfCache[key] = { pdf: await loadingTask.promise, blobUrl };
     } catch (e) {
       console.error("PDF load error:", url, e);
@@ -117,7 +118,7 @@ async function renderPdfPage(year, type, pageNum) {
           if (resp2.ok) {
             const blob2 = await resp2.blob();
             const blobUrl2 = URL.createObjectURL(blob2);
-            const lt = pdfjsLib.getDocument({ url: blobUrl2, disableRange: true, disableStream: true });
+            const lt = pdfjsLib.getDocument({ url: blobUrl2, disableRange: true, disableStream: true, useWorkerFetch: false, useSystemFonts: true });
             pdfCache[key2] = { pdf: await lt.promise, blobUrl: blobUrl2 };
           } else return "";
         } catch { return ""; }
