@@ -19,6 +19,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,13 +34,13 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm install
 
       - name: Build
         working-directory: frontend
         run: npm run build
         env:
-          VITE_API_BASE: ${{ vars.VITE_API_BASE || '/api' }}
+          VITE_API_BASE: ${{ vars.VITE_API_BASE || '' }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
