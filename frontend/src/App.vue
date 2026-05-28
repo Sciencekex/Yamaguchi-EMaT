@@ -1,7 +1,9 @@
 <script setup>
 import { ref, onUnmounted, computed } from "vue";
 
-const API = "/api";
+const API = import.meta.env.PROD
+  ? (import.meta.env.VITE_API_BASE || "/api")
+  : "/api";
 
 const question = ref(null);
 const currentPageIdx = ref(0);
