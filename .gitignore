@@ -10,3 +10,4 @@ index_cache.json
 .DS_Store
 Thumbs.db
 frontend/public/QuestionData/
+package-lock.json
